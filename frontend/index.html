@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hybrid Product Catalog Admin</title>
+  <link rel="stylesheet" href="style.css?v=crud-debug-v3">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Hybrid SQL + MongoDB Admin</p>
+      <h1>Electronics Product Catalog</h1>
+    </div>
+    <div class="top-actions">
+      <button id="themeToggle" type="button">Theme</button>
+      <button id="refreshBtn" type="button">Refresh</button>
+      <button id="addProductBtn" type="button">Add Product</button>
+      <span id="apiStatus" class="status">Checking API</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="metrics" aria-label="Catalog metrics">
+      <article class="metric"><span>Total Products</span><strong id="totalProducts">0</strong></article>
+      <article class="metric"><span>Average Price</span><strong id="averagePrice">Rs. 0</strong></article>
+      <article class="metric"><span>Inventory Value</span><strong id="inventoryValue">Rs. 0</strong></article>
+      <article class="metric danger"><span>Low Stock</span><strong id="lowStockCount">0</strong></article>
+    </section>
+
+    <section class="panel analytics-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Live Analytics</h2>
+          <p>Julia recalculates this from MySQL after every add, edit, and delete.</p>
+        </div>
+      </div>
+      <div class="analytics-grid">
+        <div><h3>Top Selling</h3><div id="sellingProducts" class="compact-list"></div></div>
+        <div><h3>Categories</h3><div id="categoryStats" class="compact-list"></div></div>
+        <div><h3>Brand Leaders</h3><div id="brandStats" class="compact-list"></div></div>
+        <div><h3>Most Expensive</h3><div id="expensiveProducts" class="compact-list"></div></div>
+        <div><h3>Highest Rated</h3><div id="ratedProducts" class="compact-list"></div></div>
+        <div><h3>Most Reviewed</h3><div id="reviewedProducts" class="compact-list"></div></div>
+        <div><h3>Highest Discounts</h3><div id="discountProducts" class="compact-list"></div></div>
+        <div><h3>Low Stock Prediction</h3><div id="lowStockProducts" class="compact-list"></div></div>
+        <div><h3>Category Trends</h3><div id="trendStats" class="compact-list"></div></div>
+      </div>
+    </section>
+
+    <section class="panel catalog-panel">
+      <div class="panel-head catalog-tools">
+        <div>
+          <h2>Product Inventory</h2>
+          <p id="resultInfo">Loading products</p>
+        </div>
+        <div class="filters">
+          <input id="searchInput" type="search" placeholder="Search product, brand, category">
+          <select id="categoryFilter"><option value="">All Categories</option></select>
+          <select id="brandFilter"><option value="">All Brands</option></select>
+          <select id="sortFilter">
+            <option value="popularity">Popularity</option>
+            <option value="price">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="rating">Rating</option>
+            <option value="discount">Discount</option>
+            <option value="stock">Low Stock</option>
+            <option value="name">Name</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="recommendation-strip">
+        <h3>Smart Recommendations</h3>
+        <div id="recommendations" class="recommendation-grid"></div>
+      </div>
+
+      <div id="loading" class="loading" hidden>Loading catalog...</div>
+      <div id="productGrid" class="product-grid"></div>
+      <p id="emptyState" class="empty-state" hidden>No products found.</p>
+
+      <div class="pager">
+        <button id="prevPage" type="button">Prev</button>
+        <span id="pageInfo">Page 1</span>
+        <button id="nextPage" type="button">Next</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="productDialog">
+    <div class="dialog-head">
+      <h2 id="dialogTitle">Product</h2>
+      <button class="icon-btn" id="closeDialog" type="button" aria-label="Close">&times;</button>
+    </div>
+    <div id="detailContent" class="detail-content"></div>
+  </dialog>
+
+  <dialog id="formDialog">
+    <form id="productForm">
+      <div class="dialog-head">
+        <h2 id="formTitle">Add Product</h2>
+        <button class="icon-btn" id="closeForm" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-grid">
+        <input type="hidden" id="productId">
+        <label>Product Name<input id="productName" required maxlength="500"></label>
+        <label>Brand<input id="brand" required maxlength="120"></label>
+        <label>Category<input id="category" required maxlength="80"></label>
+        <label>Sub Category<input id="subCategory" maxlength="160"></label>
+        <label>Price<input id="price" type="number" min="0" step="0.01" required></label>
+        <label>Original Price<input id="originalPrice" type="number" min="0" step="0.01"></label>
+        <label>Rating<input id="rating" type="number" min="0" max="5" step="0.1"></label>
+        <label>Reviews<input id="reviewCount" type="number" min="0"></label>
+        <label>Stock<input id="stockQuantity" type="number" min="0"></label>
+        <label>Image URL<input id="imageUrl" type="url"></label>
+        <label>Product URL<input id="productUrl" type="url"></label>
+        <label>Seller<input id="seller"></label>
+        <label>Color<input id="color"></label>
+        <label>Storage<input id="storage"></label>
+        <label>RAM<input id="ram"></label>
+        <label>Battery<input id="battery"></label>
+        <label>Processor<input id="processor"></label>
+        <label>Warranty<input id="warranty"></label>
+        <label class="wide">Features<textarea id="features" rows="3" placeholder="Separate features with commas"></textarea></label>
+        <label class="wide">Description<textarea id="description" rows="4"></textarea></label>
+      </div>
+      <div class="form-actions">
+        <span id="formError" class="form-error" role="alert"></span>
+        <button id="saveProduct" type="submit">Save Product</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="deleteDialog">
+    <div class="dialog-head">
+      <h2>Delete Product</h2>
+      <button class="icon-btn" id="closeDelete" type="button" aria-label="Close">&times;</button>
+    </div>
+    <div class="delete-body">
+      <p id="deleteText">Delete this product from MySQL and MongoDB?</p>
+      <div class="form-actions">
+        <button id="cancelDelete" type="button" class="secondary">Cancel</button>
+        <button id="confirmDelete" type="button" class="delete-btn">Delete</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="script.js?v=crud-debug-v3"></script>
+</body>
+</html>
