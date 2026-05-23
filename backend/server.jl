@@ -118,8 +118,15 @@ function key_name(value)
     return replace(lowercase(string(value)), r"[^a-z0-9]" => "")
 end
 
+function key_variants(key)
+    text = string(key)
+    variants = Any[text, Symbol(text)]
+    key isa Symbol && push!(variants, key)
+    return variants
+end
+
 function field_value(data, keys...; default = nothing)
-    data isa Dict || return default
+    data isa AbstractDict || return default
     wanted = Set(key_name.(keys))
     for (key, value) in data
         if key_name(key) in wanted
@@ -130,11 +137,11 @@ function field_value(data, keys...; default = nothing)
 end
 
 function product_dicts(data)
-    data isa Dict || return Any[]
+    data isa AbstractDict || return Any[]
     dicts = Any[data]
     wrapper_keys = Set(["product", "data", "payload", "body", "fields", "item", "record"])
     for (key, value) in data
-        if value isa Dict && key_name(key) in wrapper_keys
+        if value isa AbstractDict && key_name(key) in wrapper_keys
             append!(dicts, product_dicts(value))
         elseif value isa AbstractString && key_name(key) in wrapper_keys
             nested = try
@@ -142,10 +149,35 @@ function product_dicts(data)
             catch
                 nothing
             end
-            nested isa Dict && append!(dicts, product_dicts(normalize_json_keys(nested)))
+            nested isa AbstractDict && append!(dicts, product_dicts(normalize_json_keys(nested)))
         end
     end
     return dicts
+end
+
+function safe_get(data, keys...; default = nothing)
+    for source in product_dicts(data)
+        if !(source isa AbstractDict)
+            continue
+        end
+
+        for requested_key in keys
+            for variant in key_variants(requested_key)
+                if haskey(source, variant)
+                    value = source[variant]
+                    usable_value(value) && return value
+                end
+            end
+        end
+
+        wanted = Set(key_name.(keys))
+        for (key, value) in source
+            if key_name(key) in wanted && usable_value(value)
+                return value
+            end
+        end
+    end
+    return default
 end
 
 function has_any_field(data, field_names...)
@@ -164,23 +196,13 @@ function usable_value(value)
 end
 
 function first_valid_field(data, keys...)
-    for source in product_dicts(data)
-        for wanted_key in keys
-            normalized = key_name(wanted_key)
-            for (key, value) in source
-                if key_name(key) == normalized && usable_value(value)
-                    return value
-                end
-            end
-        end
-    end
-    return nothing
+    return safe_get(data, keys...; default = nothing)
 end
 
 function fallback_field(incoming, existing, keys...; default = nothing)
-    value = first_valid_field(incoming, keys...)
+    value = safe_get(incoming, keys...; default = nothing)
     value !== nothing && return value
-    value = first_valid_field(existing, keys...)
+    value = safe_get(existing, keys...; default = nothing)
     value !== nothing && return value
     return default
 end
@@ -196,18 +218,9 @@ end
 
 function numeric_field(incoming, existing, keys...; default = 0.0)
     for data in (incoming, existing)
-        for source in product_dicts(data)
-            for wanted_key in keys
-                normalized = key_name(wanted_key)
-                for (key, value) in source
-                    if key_name(key) != normalized
-                        continue
-                    end
-                    parsed = parsed_float_value(value)
-                    parsed !== nothing && return parsed
-                end
-            end
-        end
+        value = safe_get(data, keys...; default = nothing)
+        parsed = parsed_float_value(value)
+        parsed !== nothing && return parsed
     end
     return Float64(default)
 end
@@ -447,8 +460,8 @@ function sync_mongo_delete(id)
 end
 
 function normalize_json_keys(value)
-    if value isa Dict
-        return Dict(string(k) => normalize_json_keys(v) for (k, v) in value)
+    if value isa AbstractDict
+        return Dict{String, Any}(string(k) => normalize_json_keys(v) for (k, v) in value)
     elseif value isa AbstractVector
         return [normalize_json_keys(v) for v in value]
     else
@@ -476,7 +489,7 @@ function request_json(request)
         if parsed isa AbstractString
             parsed = JSON.parse(parsed)
         end
-        return parsed isa Dict ? normalize_json_keys(parsed) : Dict{String, Any}()
+        return parsed isa AbstractDict ? normalize_json_keys(parsed) : Dict{String, Any}()
     catch err
         @warn "JSON parse failed; trying form body fallback" err raw
         return parse_form_body(raw)
@@ -487,7 +500,8 @@ function debug_request_payload(label, request, data)
     println("REQUEST TRACE => ", label)
     println("RAW BODY => ", String(request.body))
     println("PARSED JSON => ", data)
-    println("PAYLOAD KEYS => ", data isa Dict ? collect(Base.keys(data)) : typeof(data))
+    println("PARSED JSON TYPE => ", typeof(data))
+    println("PAYLOAD KEYS => ", data isa AbstractDict ? collect(Base.keys(data)) : typeof(data))
 end
 
 function stock_status(quantity::Int)
@@ -498,13 +512,13 @@ function stock_status(quantity::Int)
 end
 
 function normalized_product(data, existing = Dict{String, Any}())
-    incoming = data isa Dict ? data : Dict{String, Any}()
-    stored = existing isa Dict ? existing : Dict{String, Any}()
+    incoming = data isa AbstractDict ? data : Dict{String, Any}()
+    stored = existing isa AbstractDict ? existing : Dict{String, Any}()
 
     product_name = text_field(incoming, stored, "product_name", "productName", "name"; default = "")
     if isempty(product_name)
         println("NORMALIZER NAME LOOKUP FAILED. INPUT => ", incoming)
-        println("NORMALIZER AVAILABLE KEYS => ", incoming isa Dict ? collect(Base.keys(incoming)) : typeof(incoming))
+        println("NORMALIZER AVAILABLE KEYS => ", incoming isa AbstractDict ? collect(Base.keys(incoming)) : typeof(incoming))
         error("Product name is required")
     end
 
