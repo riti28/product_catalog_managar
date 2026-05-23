@@ -181,6 +181,23 @@ function imageHtml(product) {
     </div>`;
 }
 
+function safeProductUrl(product) {
+  const rawUrl = cleanText(product?.product_url || product?.productUrl || product?.url);
+  if (!rawUrl) return "";
+  try {
+    const url = new URL(rawUrl);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function productLinkHtml(product, label = "View Product") {
+  const url = safeProductUrl(product);
+  if (!url) return "";
+  return `<a class="product-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+}
+
 function mergedProductForForm(data) {
   const spec = data?.specifications || {};
   const technical = spec.technical_specifications || {};
@@ -219,6 +236,7 @@ function renderProducts(payload) {
   state.products.forEach((product) => {
     const card = document.createElement("article");
     card.className = "product-card";
+    const productLink = productLinkHtml(product);
     card.innerHTML = `
       ${imageHtml(product)}
       <div class="product-info">
@@ -231,6 +249,7 @@ function renderProducts(payload) {
           <button data-action="details" data-id="${product.id}">View</button>
           <button data-action="edit" data-id="${product.id}">Edit</button>
           <button class="delete-btn" data-action="delete" data-id="${product.id}">Delete</button>
+          ${productLink}
         </div>
       </div>`;
     productGrid.appendChild(card);
@@ -275,9 +294,10 @@ function listBlock(values) {
 async function showDetails(id) {
   const data = await fetchJson(`/combined/${id}`);
   const spec = data.specifications || {};
+  const merged = mergedProductForForm(data);
   qs("dialogTitle").textContent = title(data);
   qs("detailContent").innerHTML = `
-    ${imageHtml(data)}
+    ${imageHtml(merged)}
     <div class="detail-list">
       <div><strong>Brand:</strong> ${escapeHtml(data.brand)}</div>
       <div><strong>Category:</strong> ${escapeHtml(data.main_category)} / ${escapeHtml(data.sub_category || "General")}</div>
@@ -290,6 +310,7 @@ async function showDetails(id) {
       <div><strong>Battery:</strong> ${escapeHtml(spec.battery || "Not Available")}</div>
       <div><strong>Processor:</strong> ${escapeHtml(spec.processor || "Not Available")}</div>
       <div><strong>Warranty:</strong> ${escapeHtml(spec.warranty || "Not Available")}</div>
+      <div class="wide-detail">${productLinkHtml(merged, "Open Product Page")}</div>
       <div class="wide-detail"><strong>Description:</strong><p>${escapeHtml(spec.description || data.product_name || "")}</p></div>
       <div class="wide-detail"><strong>Features:</strong>${listBlock(spec.features)}</div>
     </div>`;

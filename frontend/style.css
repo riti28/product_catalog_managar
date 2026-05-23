@@ -39,7 +39,7 @@ button, input, select, textarea {
   font: inherit;
 }
 
-button {
+button, .product-link {
   min-height: 40px;
   padding: 0 14px;
   border-color: var(--primary);
@@ -49,9 +49,15 @@ button {
   font-weight: 800;
 }
 
-button:hover { background: var(--primary-dark); }
+button:hover, .product-link:hover { background: var(--primary-dark); }
 button:disabled { opacity: .5; cursor: not-allowed; }
 button.secondary { border-color: var(--line); background: var(--surface); color: var(--text); }
+.product-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
 input, select { height: 40px; }
 textarea { resize: vertical; min-height: 84px; padding: 10px 11px; }
 
@@ -247,7 +253,7 @@ h3 { margin-bottom: 10px; font-size: .98rem; letter-spacing: 0; }
 .badge { padding: 5px 8px; border-radius: 999px; background: #e0f2f1; color: #0f524b; font-size: .76rem; font-weight: 900; white-space: nowrap; }
 .stock { padding: 7px 9px; border-radius: 8px; background: #ecfdf3; color: var(--success); font-size: .82rem; font-weight: 900; }
 .stock.risk { background: #fff4ed; color: var(--warn); }
-.actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+.actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .delete-btn { border-color: var(--danger); background: var(--danger); }
 .delete-btn:hover { background: #912018; }
 
